@@ -47,43 +47,61 @@ pipeline {
             steps {
                 echo 'Generating deployment report...'
                 sh '''
-                    COMMIT_HASH=$(git rev-parse --short HEAD)
-                    COMMIT_MSG=$(git log -1 --pretty=%B)
-                    COMMIT_AUTHOR=$(git log -1 --pretty=%an)
-                    BRANCH=$(git rev-parse --abbrev-ref HEAD)
-                    BUILD_DATE=$(date "+%Y-%m-%d %H:%M:%S UTC")
-                    CHANGELOG=$(git log --oneline -5)
+                    python3 - <<PYEOF
+import subprocess, os
+from datetime import datetime, timezone
 
-                    cat > deployment-report.md << EOF
-# Deployment Report
+def run(cmd):
+    return subprocess.check_output(cmd, shell=True).decode().strip()
+
+commit_hash  = run("git rev-parse --short HEAD")
+commit_msg   = run("git log -1 --pretty=%B")
+commit_author = run("git log -1 --pretty=%an")
+branch       = run("git rev-parse --abbrev-ref HEAD")
+changelog    = run("git log --oneline -5")
+build_num    = os.environ.get("BUILD_NUMBER", "?")
+build_date   = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+try:
+    test_results = open("test-results.txt").read().strip()
+except:
+    test_results = "No test results found."
+
+report = f"""# Deployment Report
 
 ## Build Summary
 
-| Field        | Value                        |
-|-------------|------------------------------|
-| Build Number | #${BUILD_NUMBER}            |
-| Date         | ${BUILD_DATE}               |
-| Branch       | ${BRANCH}                   |
-| Commit       | ${COMMIT_HASH}              |
-| Author       | ${COMMIT_AUTHOR}            |
-| Status       | SUCCESS                     |
+| Field        | Value |
+|-------------|-------|
+| Build Number | #{build_num} |
+| Date         | {build_date} |
+| Branch       | {branch} |
+| Commit       | {commit_hash} |
+| Author       | {commit_author} |
+| Status       | SUCCESS |
 
 ## Commit Message
 
-> ${COMMIT_MSG}
+> {commit_msg}
 
 ## Test Results
 
-\`\`\`
-$(cat test-results.txt)
-\`\`\`
+```
+{test_results}
+```
 
 ## Recent Changelog
 
-\`\`\`
-${CHANGELOG}
-\`\`\`
-EOF
+```
+{changelog}
+```
+"""
+
+with open("deployment-report.md", "w") as f:
+    f.write(report)
+
+print("deployment-report.md generated.")
+PYEOF
                 '''
             }
         }
