@@ -15,13 +15,17 @@ pipeline {
             steps {
                 echo 'Checking out source...'
                 checkout scm
+                sh 'git fetch --unshallow || true'
             }
         }
 
         stage('Test') {
             steps {
                 echo 'Running tests...'
-                sh 'python3 tests/test_blog.py 2>&1 | tee test-results.txt'
+                sh '''
+                    python3 tests/test_blog.py > test-results.txt 2>&1
+                    cat test-results.txt
+                '''
             }
         }
 
