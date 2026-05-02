@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+    }
+
     environment {
         DEPLOY_DIR = '/var/www/honeymoon-blog'
     }
@@ -57,15 +61,17 @@ def run(cmd):
 commit_hash  = run("git rev-parse --short HEAD")
 commit_msg   = run("git log -1 --pretty=%B")
 commit_author = run("git log -1 --pretty=%an")
-branch       = run("git rev-parse --abbrev-ref HEAD")
-changelog    = run("git log --oneline -5")
+branch       = os.environ.get("GIT_BRANCH", run("git rev-parse --abbrev-ref HEAD")).replace("origin/", "")
+changelog    = run("git log --oneline -5 || echo 'No changelog available'")
 build_num    = os.environ.get("BUILD_NUMBER", "?")
 build_date   = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 
+workspace    = os.environ.get("WORKSPACE", ".")
+test_file    = os.path.join(workspace, "test-results.txt")
 try:
-    test_results = open("test-results.txt").read().strip()
+    test_results = open(test_file).read().strip() or "No test output captured."
 except:
-    test_results = "No test results found."
+    test_results = "test-results.txt not found."
 
 report = f"""# Deployment Report
 
