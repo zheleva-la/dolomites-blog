@@ -71,7 +71,7 @@ build_date    = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
 workspace  = os.environ.get("WORKSPACE", ".")
 test_file  = os.path.join(workspace, "test-results.txt")
 try:
-    test_results = open(test_file).read().strip() or "No test output captured."
+    test_results = open(test_file, encoding='utf-8').read().strip() or "No test output captured."
 except:
     test_results = "test-results.txt not found."
 
@@ -90,7 +90,7 @@ report += test_results + "\\n```\\n\\n"
 report += "## Recent Changelog\\n\\n```\\n"
 report += changelog + "\\n```\\n"
 
-with open("deployment-report.md", "w") as f:
+with open("deployment-report.md", "w", encoding='utf-8') as f:
     f.write(report)
 
 print("deployment-report.md generated.")
